@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -237,6 +237,77 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; }
   }
+  .auth-panel, .leaderboard-panel {
+    padding-top: 17px;
+    border-top: 1px solid var(--soft-line);
+  }
+  .section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .section-heading h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -.2px;
+  }
+  .section-tag { color: var(--muted); font-size: 11px; }
+  .auth-form { display: grid; gap: 10px; }
+  .auth-field { display: grid; gap: 5px; }
+  .auth-field[hidden], .auth-form[hidden], .account-state[hidden], .auth-logout[hidden] { display: none; }
+  .auth-field label { color: #333333; font-size: 12px; font-weight: 600; }
+  .auth-field input {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 13px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    outline: none;
+    color: var(--ink);
+    background: var(--canvas);
+    font: 400 14px/1.47 "SF Pro Text", system-ui, sans-serif;
+  }
+  .auth-field input:focus { border-color: var(--blue-focus); box-shadow: 0 0 0 2px #0071e322; }
+  .auth-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+  .auth-actions .action { min-height: 44px; }
+  .action:disabled { opacity: .48; cursor: not-allowed; }
+  .auth-message { min-height: 18px; margin: 9px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .auth-message[data-kind="error"] { color: #b42318; }
+  .auth-message[data-kind="success"] { color: #16733c; }
+  .account-state { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+  .account-name { overflow: hidden; color: var(--ink); font-size: 14px; font-weight: 600; text-overflow: ellipsis; }
+  .auth-logout, .leaderboard-refresh {
+    min-height: 36px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 9999px;
+    color: var(--blue);
+    background: var(--parchment);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .leaderboard-heading { margin-bottom: 9px; }
+  .leaderboard-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+  .rank-row {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    min-height: 49px;
+    border-top: 1px solid var(--soft-line);
+  }
+  .rank-number { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rank-row:first-child .rank-number { color: var(--blue); font-weight: 700; }
+  .rank-player { display: grid; min-width: 0; gap: 2px; }
+  .rank-name { overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  .rank-detail { color: var(--muted); font-size: 10px; }
+  .rank-score { color: var(--ink); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .rank-row.is-me .rank-name, .rank-row.is-me .rank-score { color: var(--blue); }
+  .leaderboard-empty { padding: 13px 0; border-top: 1px solid var(--soft-line); color: var(--muted); font-size: 12px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -284,6 +355,44 @@
           <button class="action primary" id="start">새 게임</button>
           <button class="action" id="pause">일시정지</button>
         </div>
+        <section class="auth-panel" aria-labelledby="auth-title">
+          <div class="section-heading">
+            <h2 id="auth-title">플레이어 로그인</h2>
+            <span class="section-tag">이메일 · 비밀번호</span>
+          </div>
+          <div class="account-state" id="account-state" hidden>
+            <span class="account-name" id="account-name"></span>
+            <button class="auth-logout" id="auth-logout" type="button" hidden>로그아웃</button>
+          </div>
+          <form class="auth-form" id="auth-form">
+            <div class="auth-field" id="auth-name-field" hidden>
+              <label for="auth-name">순위표 닉네임</label>
+              <input id="auth-name" type="text" maxlength="24" autocomplete="nickname" placeholder="닉네임">
+            </div>
+            <div class="auth-field">
+              <label for="auth-email">이메일</label>
+              <input id="auth-email" type="email" required autocomplete="email" placeholder="name@example.com">
+            </div>
+            <div class="auth-field">
+              <label for="auth-password">비밀번호</label>
+              <input id="auth-password" type="password" required minlength="6" autocomplete="current-password" placeholder="6자 이상">
+            </div>
+            <div class="auth-actions">
+              <button class="action primary" id="auth-submit" type="submit">로그인</button>
+              <button class="action" id="auth-toggle" type="button">회원가입</button>
+            </div>
+          </form>
+          <p class="auth-message" id="auth-message" role="status" aria-live="polite">로그인 후 게임 점수를 순위표에 저장할 수 있습니다.</p>
+        </section>
+        <section class="leaderboard-panel" aria-labelledby="leaderboard-title">
+          <div class="section-heading leaderboard-heading">
+            <h2 id="leaderboard-title">최고 기록 순위</h2>
+            <button class="leaderboard-refresh" id="leaderboard-refresh" type="button">새로고침</button>
+          </div>
+          <ol class="leaderboard-list" id="leaderboard-list" aria-live="polite">
+            <li class="leaderboard-empty">Supabase 설정 후 순위가 표시됩니다.</li>
+          </ol>
+        </section>
         <div class="help">
           <h2>조작 방법</h2>
           <div class="key-row"><span>이동</span><span><kbd>←</kbd> <kbd>→</kbd></span></div>
@@ -301,6 +410,13 @@
     </footer>
   </main>
 
+  <script>
+    window.TETRIS_SUPABASE_CONFIG = {
+      url: "https://qxwkjqxmrcqmhqertljo.supabase.co",
+      anonKey: "sb_publishable_GAThUOafrFBQWX6UI4lsYA_Hif_YaJO"
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (() => {
       "use strict";
@@ -327,6 +443,35 @@
         level: document.querySelector("#level"),
         lines: document.querySelector("#lines")
       };
+      const authUi = {
+        form: document.querySelector("#auth-form"),
+        nameField: document.querySelector("#auth-name-field"),
+        name: document.querySelector("#auth-name"),
+        email: document.querySelector("#auth-email"),
+        password: document.querySelector("#auth-password"),
+        submit: document.querySelector("#auth-submit"),
+        toggle: document.querySelector("#auth-toggle"),
+        account: document.querySelector("#account-state"),
+        accountName: document.querySelector("#account-name"),
+        logout: document.querySelector("#auth-logout"),
+        message: document.querySelector("#auth-message"),
+        leaderboard: document.querySelector("#leaderboard-list"),
+        refresh: document.querySelector("#leaderboard-refresh")
+      };
+      const supabaseConfig = window.TETRIS_SUPABASE_CONFIG || {};
+      const supabaseConfigured = Boolean(
+        window.supabase && window.supabase.createClient &&
+        typeof supabaseConfig.url === "string" &&
+        supabaseConfig.url.startsWith("https://") &&
+        !supabaseConfig.url.includes("YOUR_") &&
+        typeof supabaseConfig.anonKey === "string" &&
+        supabaseConfig.anonKey.length > 20 &&
+        !supabaseConfig.anonKey.includes("YOUR_")
+      );
+      const supabaseClient = supabaseConfigured
+        ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey)
+        : null;
+      let authUser = null, authMode = "login", pendingScore = null;
       let board, bag, queue, piece, holdPiece, holdUsed;
       let score, lines, level, best, paused, gameOver;
       let lastTime = 0, dropTimer = 0, elapsedTime = 0;
@@ -445,6 +590,7 @@
           try { localStorage.setItem("block-drop-best", String(best)); } catch (_) {}
         }
         updateUI();
+        void persistGameScore({ score, lines, level });
       }
       function reset() {
         board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
@@ -470,6 +616,184 @@
         ui.level.textContent = level;
         ui.lines.textContent = lines;
       }
+      function setAuthMessage(message, kind = "info") {
+        authUi.message.textContent = message;
+        authUi.message.dataset.kind = kind;
+      }
+      function currentDisplayName() {
+        const fromMetadata = authUser && authUser.user_metadata
+          ? authUser.user_metadata.display_name : "";
+        const fallback = authUser && authUser.email
+          ? authUser.email.split("@")[0] : "플레이어";
+        return String(fromMetadata || fallback).trim().slice(0, 24) || "플레이어";
+      }
+      function renderAuthState() {
+        if (!supabaseClient) {
+          authUi.form.hidden = false;
+          authUi.form.querySelectorAll("input, button").forEach(control => { control.disabled = true; });
+          authUi.account.hidden = true;
+          authUi.logout.hidden = true;
+          setAuthMessage("SUPABASE_SETUP.md에 따라 Supabase URL과 publishable key를 설정하세요.");
+          return;
+        }
+        const loggedIn = Boolean(authUser);
+        authUi.form.hidden = loggedIn;
+        authUi.account.hidden = !loggedIn;
+        authUi.logout.hidden = !loggedIn;
+        authUi.accountName.textContent = loggedIn ? currentDisplayName() : "";
+        authUi.nameField.hidden = authMode !== "signup";
+        authUi.name.required = authMode === "signup";
+        authUi.password.autocomplete = authMode === "signup" ? "new-password" : "current-password";
+        authUi.submit.textContent = authMode === "signup" ? "가입하기" : "로그인";
+        authUi.toggle.textContent = authMode === "signup" ? "로그인으로 전환" : "회원가입";
+      }
+      async function loadLeaderboard() {
+        if (!supabaseClient) {
+          authUi.leaderboard.innerHTML = '<li class="leaderboard-empty">Supabase 설정 후 순위가 표시됩니다.</li>';
+          return;
+        }
+        authUi.leaderboard.innerHTML = '<li class="leaderboard-empty">순위를 불러오는 중...</li>';
+        const { data, error } = await supabaseClient
+          .from("tetris_leaderboard")
+          .select("user_id, display_name, best_score, lines, level, updated_at")
+          .order("best_score", { ascending: false })
+          .order("updated_at", { ascending: true })
+          .limit(10);
+        if (error) {
+          authUi.leaderboard.innerHTML = '<li class="leaderboard-empty">순위표를 불러오지 못했습니다. Supabase SQL 설정을 확인하세요.</li>';
+          return;
+        }
+        if (!data || data.length === 0) {
+          authUi.leaderboard.innerHTML = '<li class="leaderboard-empty">아직 등록된 점수가 없습니다. 첫 기록을 남겨보세요.</li>';
+          return;
+        }
+        authUi.leaderboard.replaceChildren();
+        data.forEach((record, index) => {
+          const item = document.createElement("li");
+          item.className = "rank-row" + (authUser && authUser.id === record.user_id ? " is-me" : "");
+          const rank = document.createElement("span");
+          rank.className = "rank-number";
+          rank.textContent = String(index + 1).padStart(2, "0");
+          const player = document.createElement("span");
+          player.className = "rank-player";
+          const name = document.createElement("span");
+          name.className = "rank-name";
+          name.textContent = record.display_name || "플레이어";
+          const detail = document.createElement("span");
+          detail.className = "rank-detail";
+          detail.textContent = String(record.lines) + "줄 · Lv." + String(record.level);
+          player.append(name, detail);
+          const points = document.createElement("span");
+          points.className = "rank-score";
+          points.textContent = Number(record.best_score).toLocaleString();
+          item.append(rank, player, points);
+          authUi.leaderboard.append(item);
+        });
+      }
+      async function persistGameScore(result) {
+        if (!result || result.score <= 0 || !supabaseClient) return;
+        if (!pendingScore || result.score > pendingScore.score) pendingScore = result;
+        if (!authUser) {
+          setAuthMessage("이번 기록은 보관 중입니다. 로그인하면 순위표에 저장됩니다.");
+          return;
+        }
+        const scoreToSave = pendingScore;
+        setAuthMessage("점수를 저장하는 중...");
+        const { error } = await supabaseClient.rpc("submit_tetris_score", {
+          p_display_name: currentDisplayName(),
+          p_score: scoreToSave.score,
+          p_lines: scoreToSave.lines,
+          p_level: scoreToSave.level
+        });
+        if (error) {
+          setAuthMessage("점수 저장에 실패했습니다. Supabase 설정을 확인하세요.", "error");
+          return;
+        }
+        pendingScore = null;
+        setAuthMessage("최고 기록을 순위표에 저장했습니다.", "success");
+        await loadLeaderboard();
+      }
+      async function initializeSupabase() {
+        if (!supabaseClient) {
+          renderAuthState();
+          await loadLeaderboard();
+          return;
+        }
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) setAuthMessage("로그인 상태를 확인하지 못했습니다.", "error");
+        authUser = data && data.session ? data.session.user : null;
+        renderAuthState();
+        await loadLeaderboard();
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+          authUser = session ? session.user : null;
+          renderAuthState();
+          void loadLeaderboard();
+          if (authUser && pendingScore) {
+            const scoreToSave = pendingScore;
+            window.setTimeout(() => { void persistGameScore(scoreToSave); }, 0);
+          }
+        });
+      }
+      authUi.form.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!supabaseClient) return;
+        authUi.submit.disabled = true;
+        authUi.toggle.disabled = true;
+        try {
+          let result;
+          if (authMode === "signup") {
+            const displayName = authUi.name.value.trim();
+            if (!displayName) {
+              setAuthMessage("순위표에 표시할 닉네임을 입력하세요.", "error");
+              return;
+            }
+            result = await supabaseClient.auth.signUp({
+              email: authUi.email.value.trim(),
+              password: authUi.password.value,
+              options: { data: { display_name: displayName } }
+            });
+            if (!result.error && result.data && !result.data.session) {
+              setAuthMessage("가입은 완료됐지만 이메일 확인이 켜져 있습니다. Supabase에서 Confirm Email을 끄세요.", "error");
+              return;
+            }
+          } else {
+            result = await supabaseClient.auth.signInWithPassword({
+              email: authUi.email.value.trim(),
+              password: authUi.password.value
+            });
+          }
+          if (result.error) {
+            setAuthMessage(result.error.message, "error");
+          } else {
+            authUser = result.data.user;
+            renderAuthState();
+            setAuthMessage(authMode === "signup" ? "가입 및 로그인이 완료됐습니다." : "로그인했습니다.", "success");
+            await loadLeaderboard();
+          }
+        } catch (_) {
+          setAuthMessage("Supabase에 연결할 수 없습니다. 프로젝트 설정을 확인하세요.", "error");
+        } finally {
+          authUi.submit.disabled = false;
+          authUi.toggle.disabled = false;
+        }
+      });
+      authUi.toggle.addEventListener("click", () => {
+        authMode = authMode === "login" ? "signup" : "login";
+        renderAuthState();
+        setAuthMessage(authMode === "signup"
+          ? "이메일 인증 없이 쓰려면 Supabase Auth의 Confirm Email을 꺼야 합니다."
+          : "로그인하면 개인 최고 기록을 불러옵니다.");
+      });
+      authUi.logout.addEventListener("click", async () => {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) setAuthMessage("로그아웃하지 못했습니다.", "error");
+        else setAuthMessage("로그아웃했습니다.");
+      });
+      authUi.refresh.addEventListener("click", () => {
+        void loadLeaderboard();
+        if (authUser && pendingScore) void persistGameScore(pendingScore);
+      });
       function drawBlock(ctx, x, y, size, color, ghost = false) {
         if (ghost) {
           ctx.strokeStyle = "#8e9ab4";
@@ -601,6 +925,7 @@
         requestAnimationFrame(frame);
       }
       reset();
+      void initializeSupabase();
       requestAnimationFrame(frame);
     })();
   </script>
