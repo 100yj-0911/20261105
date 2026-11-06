@@ -56,7 +56,14 @@
     { id: 'writersblock', name: '작곡 막힘', kind: 'negative', desc: '세트리스트 점수 -3', effects: { songScore: -3 } },
     { id: 'egoist', name: '독단적 성향', kind: 'negative', desc: '팀 호흡 60 미만 공연 -3', effects: { lowSyncScore: -3 } }
   ];
-  const names = ['서윤', '지호', '하린', '도윤', '민서', '시우', '유진', '수빈', '예린', '태오', '지안', '선우', '가온', '이안', '다은', '재희', '소율', '현우', '나윤', '준서'];
+  const names = [
+    '서윤', '지호', '하린', '도윤', '민서', '시우', '유진', '수빈', '예린', '태오',
+    '지안', '선우', '가온', '이안', '다은', '재희', '소율', '현우', '나윤', '준서',
+    '하준', '채원', '연우', '은우', '지민', '수아', '시현', '유나', '도현', '세아',
+    '민준', '하율', '주원', '예서', '지율', '아린', '건우', '유빈', '태윤', '서아',
+    '지후', '나은', '시온', '윤서', '지우', '하나', '이든', '다현', '세준', '유하',
+    '민재', '채윤', '태린', '주하', '수현', '서진', '예찬', '로아', '도하', '은서'
+  ];
   const starterSongTemplates = [
     { id: 'spark', type: '오프닝', boost: 4, unlock: 0 },
     { id: 'night', type: '드라이브', boost: 5, unlock: 0 },
@@ -73,11 +80,21 @@
   const songNouns = ['파도', '심장', '거리', '우주', '신호', '밤', '노래', '계절', '불꽃', '기억', '발걸음', '별', '숨결', '소음', '빛', '비밀', '약속', '궤도', '시간', '여름', '멜로디', '그림자', '도시', '아침', '정거장', '편지', '바람', '눈물', '하늘', '달', '비', '꿈', '새', '창문', '리듬', '기차', '섬', '노을', '전파', '온도', '악보', '꽃', '물결', '새벽', '미소', '침묵', '골목', '안개', '장면', '목소리'];
   const venues = [
     { name: '골목 라이브 바', audience: 65, pay: 100, difficulty: 35 },
-    { name: '대학가 클럽', audience: 100, pay: 140, difficulty: 42 },
-    { name: '지하 음악 축제', audience: 150, pay: 185, difficulty: 49 },
-    { name: '도심 라이브 하우스', audience: 230, pay: 250, difficulty: 56 },
-    { name: '시티 스테이지', audience: 340, pay: 330, difficulty: 63 },
-    { name: '서머 뮤직 페스티벌', audience: 500, pay: 440, difficulty: 70 }
+    { name: '독립서점 오픈 마이크', audience: 78, pay: 115, difficulty: 37 },
+    { name: '대학가 클럽', audience: 100, pay: 140, difficulty: 40 },
+    { name: '옥상 라이브', audience: 125, pay: 165, difficulty: 43 },
+    { name: '문화센터 소극장', audience: 150, pay: 190, difficulty: 46 },
+    { name: '재즈 카페 세션', audience: 175, pay: 220, difficulty: 49 },
+    { name: '지하 음악 축제', audience: 205, pay: 255, difficulty: 52 },
+    { name: '해변 버스킹 무대', audience: 245, pay: 290, difficulty: 54 },
+    { name: '도심 라이브 하우스', audience: 290, pay: 330, difficulty: 57 },
+    { name: '라디오 공개방송', audience: 330, pay: 380, difficulty: 60 },
+    { name: '시티 스테이지', audience: 380, pay: 435, difficulty: 63 },
+    { name: '대학 축제 메인 무대', audience: 440, pay: 495, difficulty: 65 },
+    { name: '야외 록 페스티벌', audience: 510, pay: 560, difficulty: 68 },
+    { name: '서머 뮤직 페스티벌', audience: 590, pay: 630, difficulty: 70 },
+    { name: '전국 투어 홀', audience: 680, pay: 710, difficulty: 73 },
+    { name: '아레나 스페셜 쇼', audience: 800, pay: 800, difficulty: 76 }
   ];
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -257,11 +274,16 @@
   }
 
   function offerFor(week, fame) {
-    const level = clamp(Math.floor((week - 1) / 2.5) + Math.floor(fame / 28), 0, venues.length - 1);
-    const base = venues[level];
+    const level = clamp(Math.floor((week - 1) / 3) + Math.floor(fame / 35), 0, venues.length - 1);
+    const base = venues[randomInt(Math.max(0, level - 1), level)];
     const lateTours = Math.floor(Math.max(0, week - 12) / 4);
     return { ...base, audience: base.audience + lateTours * 65 + randomInt(-8, 12),
       pay: base.pay + lateTours * 45 + randomInt(-10, 20), difficulty: clamp(base.difficulty + lateTours, 0, 80) };
+  }
+
+  function operatingCostFor(week, fame, fans, gear) {
+    return 55 + Math.floor((week - 1) / 4) * 14 + Math.floor(fame / 20) * 12 +
+      Math.floor(Math.sqrt(Math.max(0, fans))) * 3 + gear * 12;
   }
 
   function startGame() {
@@ -271,7 +293,7 @@
       money: 250, fans: 20, fame: 0, synergy: 45, hype: 0, gear: 0,
       members: draft.members.map(member => ({ ...member })),
       songs: createSongCatalog(),
-      relationships: createRelationships(), strainWeeks: 0, lastEvent: null, gameOverReason: '',
+      relationships: createRelationships(), strainWeeks: 0, lastEvent: null, gameOverReason: '', lastOperatingCost: 0,
       setlist: ['spark', 'night', 'echo'], offer: offerFor(1, 0),
       totalEarned: 0, shows: 0, wins: 0, result: null,
       log: [{ week: 1, text: '첫 연습실에 모였습니다. 이제 우리만의 사운드를 만들 차례!' }]
@@ -290,7 +312,7 @@
     if (kind === 'practice') return 30;
     if (kind === 'promo') return 45;
     if (kind === 'gear') return clamp(180 + bandEffect('gearCost'), 90, 260);
-    if (kind === 'talk') return 25;
+    if (kind === 'talk') return 40;
     return 0;
   }
 
@@ -328,9 +350,9 @@
       message = `장비를 업그레이드했습니다. 장비 ${state.gear}단계`;
     } else if (kind === 'talk') {
       const pair = weakestPair();
-      state.relationships[pair.key] = clamp(pair.value + 18, 0, 100);
+      state.relationships[pair.key] = clamp(pair.value + 14, 0, 100);
       state.synergy = clamp(state.synergy + 4, 0, 100);
-      message = `${pairNames(pair.a, pair.b)} 함께 대화했습니다. 둘의 관계 +18, 팀 호흡 +4`;
+      message = `${pairNames(pair.a, pair.b)} 함께 대화했습니다. 둘의 관계 +14, 팀 호흡 +4`;
     } else return;
     state.money -= cost;
     state.ap -= 1;
@@ -465,7 +487,9 @@
       songBonus + special + (relationAverage() - 60) * .22 - state.offer.difficulty * .32 + randomInt(-7, 7)), 0, 100);
     const grade = score >= 85 ? 'S' : score >= 72 ? 'A' : score >= 58 ? 'B' : score >= 43 ? 'C' : 'D';
     const success = score >= 58;
-    const earned = Math.max(0, Math.round(state.offer.pay * (success ? 1 + Math.max(0, score - 60) / 100 : .55) * Math.max(.1, 1 + bandEffect('payRate'))));
+    const gross = Math.max(0, Math.round(state.offer.pay * (success ? 1 + Math.max(0, score - 60) / 100 : .55) * Math.max(.1, 1 + bandEffect('payRate'))));
+    const venueFee = Math.round(gross * .18);
+    const earned = gross - venueFee;
     const newFans = Math.max(2, Math.round(state.offer.audience * score / 100 * .36 * Math.max(.1, 1 + bandEffect('fanRate'))));
     const fame = Math.max(1, Math.floor(score / 17) + (success ? 2 : 0));
     state.money += earned;
@@ -480,9 +504,9 @@
       if (member.exp >= 10) { member.skill = clamp(member.skill + 1, 0, 100); member.exp -= 10; }
     });
     const newSongs = addUnlockedSongs();
-    state.result = { score, grade, success, earned, newFans, fame, songs: chosen.map(song => song.name), newSongs, venue: state.offer.name };
+    state.result = { score, grade, success, gross, venueFee, earned, newFans, fame, songs: chosen.map(song => song.name), newSongs, venue: state.offer.name };
     state.phase = 'post';
-    log(`${state.offer.name} 공연 ${grade}등급 · 수입 ${format(earned)} · 팬 +${format(newFans)}`);
+    log(`${state.offer.name} 공연 ${grade}등급 · 공연장 수수료 ${format(venueFee)}원 · 정산 수입 ${format(earned)}원 · 팬 +${format(newFans)}`);
     save(); render(); showCutscene();
   }
 
@@ -528,16 +552,16 @@
     } else if (count === 2) {
       const pair = weakest.value < 58 ? weakest : relationshipEntries()[randomInt(0, 9)];
       participants = [pair.a, pair.b];
-      if (pair.value < 45 && Math.random() < .55) {
-        title = '멤버 간 불화'; relationPerPair = -randomInt(10, 18);
-        state.synergy = clamp(state.synergy - 4, 0, 100);
+      if (pair.value < 72 && Math.random() < clamp(.32 + (60 - pair.value) * .014, .2, .72)) {
+        title = '멤버 간 불화'; relationPerPair = -randomInt(18, 28);
+        state.synergy = clamp(state.synergy - 5, 0, 100);
         text = `${pairNames(pair.a, pair.b)} 연습 방향을 두고 크게 다퉜습니다.`;
       } else if (pair.value < 65) {
-        title = '둘만의 화해'; relationPerPair = randomInt(10, 17);
+        title = '둘만의 화해'; relationPerPair = randomInt(6, 10);
         state.synergy = clamp(state.synergy + 3, 0, 100);
         text = `${pairNames(pair.a, pair.b)} 솔직한 대화로 서로를 이해했습니다.`;
       } else {
-        title = '즉흥 듀엣'; relationPerPair = randomInt(5, 11);
+        title = '즉흥 듀엣'; relationPerPair = randomInt(3, 7);
         state.hype = clamp(state.hype + 4, 0, 100);
         text = `${pairNames(pair.a, pair.b)} 즉흥 연주를 맞추며 좋은 호흡을 보여줬습니다.`;
       }
@@ -547,12 +571,12 @@
       const trioAverage = (state.relationships[pairKey(participants[0], participants[1])] +
         state.relationships[pairKey(participants[0], participants[2])] +
         state.relationships[pairKey(participants[1], participants[2])]) / 3;
-      if (trioAverage < 50 && Math.random() < .6) {
-        title = '세 사람의 편곡 논쟁'; relationPerPair = -randomInt(5, 9);
-        state.synergy = clamp(state.synergy - 4, 0, 100);
+      if (trioAverage < 68 && Math.random() < clamp(.30 + (60 - trioAverage) * .015, .2, .7)) {
+        title = '세 사람의 편곡 논쟁'; relationPerPair = -randomInt(9, 15);
+        state.synergy = clamp(state.synergy - 5, 0, 100);
         text = `${participants.map(name).join('·')}의 의견이 엇갈려 편곡 회의가 길어졌습니다.`;
       } else {
-        title = '세 사람의 잼 세션'; relationPerPair = randomInt(5, 9);
+        title = '세 사람의 잼 세션'; relationPerPair = randomInt(3, 7);
         state.synergy = clamp(state.synergy + 4, 0, 100);
         participants.forEach(index => state.members[index].energy = clamp(state.members[index].energy - 5, 0, state.members[index].maxEnergy));
         energyNotes.push('참여 멤버 체력 -5');
@@ -560,12 +584,16 @@
       }
     } else if (count === 4) {
       participants = shuffle(all).slice(0, 4);
-      if (state.synergy < 65) {
-        title = '네 명의 집중 합주'; relationPerPair = randomInt(3, 6);
+      if ((state.synergy < 70 || relationAverage() < 65) && Math.random() < .36) {
+        title = '네 명의 합주 충돌'; relationPerPair = -randomInt(6, 10);
+        state.synergy = clamp(state.synergy - 6, 0, 100);
+        text = '네 멤버가 합주 중 서로의 실수를 탓하며 다퉜습니다.';
+      } else if (state.synergy < 65) {
+        title = '네 명의 집중 합주'; relationPerPair = randomInt(2, 5);
         state.synergy = clamp(state.synergy + 7, 0, 100);
         text = '네 멤버가 무대 호흡을 다시 맞췄습니다.';
       } else {
-        title = '깜짝 거리 공연'; relationPerPair = randomInt(2, 5);
+        title = '깜짝 거리 공연'; relationPerPair = randomInt(2, 4);
         state.fans += 14;
         text = '네 멤버가 거리에서 작은 공연을 열었습니다.';
       }
@@ -573,17 +601,17 @@
       energyNotes.push('참여 멤버 체력 -6');
     } else {
       participants = all;
-      if (relationAverage() < 43 && Math.random() < .45) {
-        title = '전체 회의 충돌'; relationPerPair = -randomInt(3, 6);
+      if (relationAverage() < 75 && Math.random() < clamp(.3 + (60 - relationAverage()) * .015, .2, .65)) {
+        title = '전체 회의 충돌'; relationPerPair = -randomInt(6, 10);
         state.synergy = clamp(state.synergy - 7, 0, 100);
         text = '다섯 멤버의 회의가 감정싸움으로 번졌습니다.';
-      } else if (state.money >= 20 && relationAverage() < 80) {
-        title = '밴드 회식'; relationPerPair = randomInt(4, 7);
-        state.money -= 20;
+      } else if (state.money >= 45 && relationAverage() < 80) {
+        title = '밴드 회식'; relationPerPair = randomInt(3, 5);
+        state.money -= 45;
         state.synergy = clamp(state.synergy + 4, 0, 100);
         text = '다섯 멤버가 함께 회식하며 서로의 이야기를 들었습니다.';
       } else {
-        title = '전원 단체 사진'; relationPerPair = randomInt(2, 4);
+        title = '전원 단체 사진'; relationPerPair = randomInt(1, 3);
         state.fans += 10;
         state.hype = clamp(state.hype + 5, 0, 100);
         text = '다섯 멤버가 찍은 단체 사진이 팬들 사이에 퍼졌습니다.';
@@ -644,6 +672,9 @@
     state.ap = 3;
     state.hype = Math.floor(state.hype / 2);
     state.members.forEach(member => member.energy = clamp(member.energy + 8, 0, member.maxEnergy));
+    state.lastOperatingCost = operatingCostFor(state.week, state.fame, state.fans, state.gear);
+    state.money -= state.lastOperatingCost;
+    log(`연습실 임대·이동·장비 유지 등 ${state.week}주차 운영비 -${format(state.lastOperatingCost)}원`);
     state.result = null;
     state.phase = 'prep';
     applyEvent();
@@ -692,7 +723,7 @@
       <div class="section-head"><div><span class="section-index">01 / LINEUP</span><h2>이번에 모인 멤버</h2></div><p>한 조합 안에서 특성은 중복되지 않습니다.</p></div>
       <div class="roster-grid">${draft.members.map(memberCard).join('')}</div>
       <div class="setup-actions"><div class="setup-hint">다시 뽑으면 다섯 명의 이름, 능력치, 특성이 모두 바뀝니다.<br>밴드를 시작한 뒤에는 멤버 구성이 고정됩니다.</div><div class="button-row"><button class="button" data-action="reroll">↻ 멤버 다시 뽑기</button><button class="button button-primary" data-action="start">이 멤버로 시작 →</button></div></div>
-      <div class="help"><strong>게임 방법</strong> · 매주 행동 포인트 3개로 연습, 홍보, 휴식, 장비 구입, 팀 대화를 선택하세요. 매주 1~5명이 참여하는 사건이 생기며 관계가 악화되거나 자금난이 이어지면 밴드가 해체될 수 있습니다. 팬과 명성이 커지면 신곡도 계속 추가됩니다. 진행 상황은 자동 저장됩니다.</div>`;
+      <div class="help"><strong>게임 방법</strong> · 매주 행동 포인트 3개로 연습, 홍보, 휴식, 장비 구입, 팀 대화를 선택하세요. 매주 1~5명이 참여하는 사건이 생기고, 다음 주에는 밴드 규모에 따른 운영비가 빠집니다. 관계가 악화되거나 자금난이 이어지면 밴드가 해체될 수 있습니다. 팬과 명성이 커지면 신곡도 계속 추가됩니다. 진행 상황은 자동 저장됩니다.</div>`;
   }
 
   function actionCard(title, description, cost, action, disabled = false, extra = '') {
@@ -712,26 +743,27 @@
     const availableSongs = state.songs.filter(song => state.fame >= song.unlock);
     const nextSong = state.songs.find(song => state.fame < song.unlock);
     const songProgress = `신곡 ${Math.max(0, state.songs.length - 3)}곡 · 다음 성장 기준 ${Math.max(0, Math.ceil((state.songs.length - 2) * 20 - bandScale()))} 남음`;
+    const nextOperatingCost = operatingCostFor(state.week + 1, state.fame, state.fans, state.gear);
     const result = state.result;
     app.innerHTML = `<div class="game-heading"><div><div class="eyebrow">WEEK ${String(state.week).padStart(2, '0')} · ${preparing ? '공연 준비 중' : '이번 주 종료'}</div><h1>${escapeHtml(state.name)}</h1></div><div class="game-heading-sub">우리의 사운드를 더 멀리 들려줄 시간.<br>진행 상황은 자동으로 저장됩니다.</div></div>
       <div class="dashboard">${metric('WEEK / 주차', state.week)}${metric('MONEY / 자금', format(state.money), '원')}${metric('FANS / 팬', format(state.fans), '명')}${metric('FAME / 명성', format(state.fame))}${metric('RELATION / 관계', relationAverage())}${metric('ACTION / 행동', `${state.ap} / 3`)}</div>
       <div class="game-layout"><div>
         ${state.lastEvent ? `<section class="event-panel ${state.lastEvent.negative ? 'event-negative' : 'event-positive'}"><div class="event-meta">이번 주 ${state.lastEvent.count}인 이벤트 · ${state.lastEvent.negative ? '갈등' : '밴드 이야기'}</div><h2>${escapeHtml(state.lastEvent.title)}</h2><p>${escapeHtml(state.lastEvent.text)}</p><div class="event-participants">${state.lastEvent.participants.map(person => `<span>${escapeHtml(person)}</span>`).join('')}</div><strong>${escapeHtml(state.lastEvent.extra || '밴드에 작은 변화가 생겼습니다.')}</strong></section>` : ''}
-        ${weakestPair().value <= 35 || state.strainWeeks > 0 ? `<div class="risk-note">⚠ ${weakestPair().value <= 35 ? `${escapeHtml(pairNames(weakestPair().a, weakestPair().b))}의 관계가 ${weakestPair().value}입니다. 팀 대화로 갈등을 풀어주세요.` : ''} ${state.strainWeeks > 0 ? `자금난 ${state.strainWeeks}/3주.` : ''}</div>` : ''}
+        ${weakestPair().value <= 35 || state.strainWeeks > 0 || state.money < nextOperatingCost ? `<div class="risk-note">⚠ ${weakestPair().value <= 35 ? `${escapeHtml(pairNames(weakestPair().a, weakestPair().b))}의 관계가 ${weakestPair().value}입니다. 팀 대화로 갈등을 풀어주세요.` : ''} ${state.money < nextOperatingCost ? `현재 자금으로는 다음 주 예상 운영비 ${format(nextOperatingCost)}원을 낼 수 없습니다. 공연 수입을 확보하세요.` : ''} ${state.strainWeeks > 0 ? `자금난 ${state.strainWeeks}/3주.` : ''}</div>` : ''}
         <section class="panel section-panel"><div class="panel-head"><h2>이번 주 할 일</h2><span>TEAM SYNC ${state.synergy} · 기대감 ${state.hype}</span></div><div class="action-grid">
           ${actionCard('◈ 합주', `팀 호흡 +${Math.max(1, 8 + bandEffect('ensemble'))}, 전원 체력 -8.`, 50, 'ensemble', disabled || state.money < 50)}
           ${actionCard('◎ 개인 연습', '선택한 멤버의 연주력이 특성에 따라 오르고 체력은 10 줄어듭니다.', 30, 'practice', disabled || state.money < 30, `<select id="train-member" aria-label="연습할 멤버 선택">${state.members.map((m, i) => `<option value="${i}">${escapeHtml(m.name)} · ${m.role}</option>`).join('')}</select>`)}
           ${actionCard('✳ 홍보', `공연 기대감 +${Math.max(2, 14 + bandEffect('promo'))}, 팬 +2.`, 45, 'promo', disabled || state.money < 45)}
           ${actionCard('☾ 휴식', '모든 멤버의 체력 회복. 회복량은 특성에 따라 달라집니다.', 0, 'rest', disabled)}
           ${actionCard('▣ 장비 구입', '장비 점수 +4. 최대 3단계. 비용은 특성에 따라 달라집니다.', actionCost('gear'), 'gear', disabled || state.money < actionCost('gear') || state.gear >= 3)}
-          ${actionCard('♡ 팀 대화', '관계가 가장 나쁜 두 멤버가 대화합니다. 관계 +18, 팀 호흡 +4.', 25, 'talk', disabled || state.money < 25)}
+          ${actionCard('♡ 팀 대화', '관계가 가장 나쁜 두 멤버가 대화합니다. 관계 +14, 팀 호흡 +4.', actionCost('talk'), 'talk', disabled || state.money < actionCost('talk'))}
         </div></section>
         <section class="panel section-panel"><div class="panel-head"><h2>멤버 현황</h2><span>장비 ${state.gear} / 3단계</span></div><div class="compact-members">${state.members.map((member, index) => `<div class="compact-member" style="--accent:${positions[index].color}"><div class="compact-portrait" style="${portraitStyle(member)}" role="img" aria-label="${escapeHtml(member.name)} 픽셀 초상화"></div><strong>${escapeHtml(member.name)}</strong><small>${member.role} · ${member.gender}</small><small>연주력 ${member.skill}</small><div class="trait-list">${traitIdsOf(member).map(traitOf).filter(Boolean).map(trait => `<span class="trait ${trait.kind === 'negative' ? 'trait-negative' : ''}" title="${escapeHtml(trait.desc)}">${escapeHtml(trait.name)}</span>`).join('')}</div><small>체력 ${member.energy}/${member.maxEnergy}</small><div class="meter"><span style="width:${Math.round(member.energy / member.maxEnergy * 100)}%"></span></div></div>`).join('')}</div></section>
         ${renderRelations()}
         <section class="panel section-panel"><div class="panel-head"><h2>밴드 기록</h2><span>RECENT NOTES</span></div><ul class="log-list">${state.log.slice(0, 7).map(item => `<li><time>WEEK ${String(item.week).padStart(2, '0')}</time>${escapeHtml(item.text)}</li>`).join('')}</ul></section>
       </div><div>
-        <section class="panel section-panel"><div class="panel-head"><h2>이번 주 공연</h2><span>LIVE OFFER</span></div><div class="venue"><span class="venue-kicker">WEEK ${String(state.week).padStart(2, '0')} · SHOW</span><h3>${escapeHtml(state.offer.name)}</h3><div class="venue-stats"><span>예상 관객 <strong>${format(state.offer.audience)}명</strong></span><span>기본 출연료 <strong>${format(state.offer.pay)}원</strong></span><span>난이도 <strong>${state.offer.difficulty}</strong></span></div></div>
-        ${preparing ? `<div class="panel-head"><h2>세트리스트</h2><span>${availableSongs.length}곡 보유 · 최대 3곡 선택</span></div><div class="setlist">${availableSongs.map(song => `<label class="song-option"><div><div class="song-name">${escapeHtml(song.name)}</div><div class="song-sub">${song.type}</div></div><div class="song-badge">점수 +${song.boost}</div><input type="checkbox" data-song="${song.id}" aria-label="${escapeHtml(song.name)} 선택" ${state.setlist.includes(song.id) ? 'checked' : ''}></label>`).join('')}</div><p class="muted">${nextSong ? `다음 곡: 명성 ${nextSong.unlock} 달성 시 「${escapeHtml(nextSong.name)}」 해금 · ` : ''}${songProgress} · 팬과 명성이 쌓이면 계속 추가됩니다.</p><div class="performance-buttons"><button class="button button-primary" data-action="perform">공연 시작 →</button><button class="button" data-action="skip">이번 주 쉬기</button></div><p class="warning">공연은 주차당 한 번 진행하며, 시작하면 남은 행동 포인트를 사용할 수 없습니다.</p>` : `<div class="result">${result.skipped ? `<div class="result-grade">—</div><h3>이번 주는 쉬어갑니다</h3><p>다음 주에 더 좋은 공연을 준비하세요.</p>` : `<div class="result-grade">${result.grade}</div><h3>${result.success ? '무대를 빛냈어요!' : '다음 무대를 준비해요'}</h3><p>공연 점수 ${result.score}점 · ${result.songs.map(escapeHtml).join(' / ')}</p><div class="result-data"><span>수입 +${format(result.earned)}원</span><span>팬 +${format(result.newFans)}명</span><span>명성 +${result.fame}</span></div>${result.newSongs?.length ? `<p class="new-song-note">새 노래 완성: ${result.newSongs.map(escapeHtml).join(' · ')}</p>` : ''}`}</div><button class="button button-primary" data-action="next">다음 주로 →</button>`}</section>
+        <section class="panel section-panel"><div class="panel-head"><h2>이번 주 공연</h2><span>LIVE OFFER</span></div><div class="venue"><span class="venue-kicker">WEEK ${String(state.week).padStart(2, '0')} · SHOW</span><h3>${escapeHtml(state.offer.name)}</h3><div class="venue-stats"><span>예상 관객 <strong>${format(state.offer.audience)}명</strong></span><span>기본 출연료 <strong>${format(state.offer.pay)}원</strong></span><span>난이도 <strong>${state.offer.difficulty}</strong></span><span>공연장 수수료 <strong>정산액의 18%</strong></span><span>다음 주 예상 운영비 <strong>${format(nextOperatingCost)}원</strong></span></div></div>
+        ${preparing ? `<div class="panel-head"><h2>세트리스트</h2><span>${availableSongs.length}곡 보유 · 최대 3곡 선택</span></div><div class="setlist">${availableSongs.map(song => `<label class="song-option"><div><div class="song-name">${escapeHtml(song.name)}</div><div class="song-sub">${song.type}</div></div><div class="song-badge">점수 +${song.boost}</div><input type="checkbox" data-song="${song.id}" aria-label="${escapeHtml(song.name)} 선택" ${state.setlist.includes(song.id) ? 'checked' : ''}></label>`).join('')}</div><p class="muted">${nextSong ? `다음 곡: 명성 ${nextSong.unlock} 달성 시 「${escapeHtml(nextSong.name)}」 해금 · ` : ''}${songProgress} · 팬과 명성이 쌓이면 계속 추가됩니다.</p><div class="performance-buttons"><button class="button button-primary" data-action="perform">공연 시작 →</button><button class="button" data-action="skip">이번 주 쉬기</button></div><p class="warning">공연은 주차당 한 번 진행하며, 시작하면 남은 행동 포인트를 사용할 수 없습니다.</p>` : `<div class="result">${result.skipped ? `<div class="result-grade">—</div><h3>이번 주는 쉬어갑니다</h3><p>다음 주에 더 좋은 공연을 준비하세요.</p>` : `<div class="result-grade">${result.grade}</div><h3>${result.success ? '무대를 빛냈어요!' : '다음 무대를 준비해요'}</h3><p>공연 점수 ${result.score}점 · ${result.songs.map(escapeHtml).join(' / ')}</p><div class="result-data"><span>정산 수입 +${format(result.earned)}원</span>${result.venueFee ? `<span>공연장 수수료 -${format(result.venueFee)}원</span>` : ''}<span>팬 +${format(result.newFans)}명</span><span>명성 +${result.fame}</span></div>${result.newSongs?.length ? `<p class="new-song-note">새 노래 완성: ${result.newSongs.map(escapeHtml).join(' · ')}</p>` : ''}`}</div><button class="button button-primary" data-action="next">다음 주로 →</button>`}</section>
         <div class="help"><strong>공연 팁</strong> · 연주력, 무대 매력, 체력, 팀 호흡, 관계 평균, 홍보 기대감과 장비가 점수에 반영됩니다. 공연을 쉬어도 다음 주로 진행할 수 있어요.</div>
         <div style="margin-top:18px"><button class="button button-danger button-small" data-action="reset">새 밴드 만들기</button></div>
       </div></div>`;
