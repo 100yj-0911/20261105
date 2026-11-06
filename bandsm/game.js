@@ -56,14 +56,20 @@
     { id: 'writersblock', name: '작곡 막힘', kind: 'negative', desc: '세트리스트 점수 -3', effects: { songScore: -3 } },
     { id: 'egoist', name: '독단적 성향', kind: 'negative', desc: '팀 호흡 60 미만 공연 -3', effects: { lowSyncScore: -3 } }
   ];
-  const names = [
-    '서윤', '지호', '하린', '도윤', '민서', '시우', '유진', '수빈', '예린', '태오',
-    '지안', '선우', '가온', '이안', '다은', '재희', '소율', '현우', '나윤', '준서',
-    '하준', '채원', '연우', '은우', '지민', '수아', '시현', '유나', '도현', '세아',
-    '민준', '하율', '주원', '예서', '지율', '아린', '건우', '유빈', '태윤', '서아',
-    '지후', '나은', '시온', '윤서', '지우', '하나', '이든', '다현', '세준', '유하',
-    '민재', '채윤', '태린', '주하', '수현', '서진', '예찬', '로아', '도하', '은서'
+  const maleNames = [
+    '지호', '도윤', '시우', '태오', '준서', '하준', '도현', '민준', '건우', '태윤',
+    '지후', '세준', '민재', '예찬', '현우', '지훈', '정우', '승현', '성민', '준혁'
   ];
+  const femaleNames = [
+    '하린', '예린', '나윤', '소율', '다은', '채원', '수아', '유나', '세아', '예서',
+    '아린', '서아', '나은', '하나', '다현', '유하', '채윤', '태린', '로아', '은서'
+  ];
+  const neutralNames = [
+    '유진', '수빈', '재희', '연우', '지민', '시현', '지율', '유빈', '수현', '서진',
+    '지우', '이든', '선율', '하늘', '한결', '다온', '해솔', '가온', '온유', '하람'
+  ];
+  const femaleOnlyNames = new Set([...femaleNames, '서윤', '민서', '지안', '하율', '윤서', '주하']);
+  const maleOnlyNames = new Set(maleNames);
   const starterSongTemplates = [
     { id: 'spark', type: '오프닝', boost: 4, unlock: 0 },
     { id: 'night', type: '드라이브', boost: 5, unlock: 0 },
@@ -130,21 +136,41 @@
 
   function createRoster() {
     const pickedTraits = shuffle(traits).slice(0, 15);
-    const pickedNames = shuffle(names).slice(0, 5);
+    const usedNames = new Set();
     const malePortraits = shuffle([0, 1, 2, 3, 4, 5, 6, 7]);
     const femalePortraits = shuffle([8, 9, 10, 11, 12, 13, 14, 15]);
     return positions.map((position, index) => {
       const memberTraits = pickedTraits.slice(index * 3, index * 3 + 3).map(trait => trait.id);
       const gender = randomInt(0, 1) ? '여성' : '남성';
+      const namePool = randomInt(0, 3) === 0 ? neutralNames : gender === '여성' ? femaleNames : maleNames;
+      const name = shuffle(namePool).find(candidate => !usedNames.has(candidate));
+      usedNames.add(name);
       const skill = clamp(randomInt(47, 68) + traitEffectSum(memberTraits, 'startSkill'), 20, 100);
       const charm = clamp(randomInt(43, 66) + traitEffectSum(memberTraits, 'startCharm'), 20, 100);
       const maxEnergy = clamp(100 + traitEffectSum(memberTraits, 'maxEnergy'), 60, 130);
       return {
-        name: pickedNames[index], role: position.role, gender,
+        name, role: position.role, gender,
         portraitIndex: gender === '여성' ? femalePortraits.pop() : malePortraits.pop(), traits: memberTraits,
         skill, charm, maxEnergy, energy: maxEnergy - randomInt(5, 14), exp: 0
       };
     });
+  }
+
+  function normalizeRosterNames(members) {
+    const used = new Set(members.map(member => member.name));
+    let changed = false;
+    members.forEach(member => {
+      const mismatched = member.gender === '남성' ? femaleOnlyNames.has(member.name) :
+        member.gender === '여성' && maleOnlyNames.has(member.name);
+      if (!mismatched) return;
+      const pool = member.gender === '남성' ? maleNames : femaleNames;
+      const replacement = shuffle(pool).find(name => !used.has(name));
+      if (!replacement) return;
+      member.name = replacement;
+      used.add(replacement);
+      changed = true;
+    });
+    return changed;
   }
 
   function readTitleHistory() {
@@ -220,7 +246,12 @@
   function load() {
     try {
       const current = JSON.parse(localStorage.getItem(SAVE_KEY));
-      if (current && current.version === 4 && Array.isArray(current.members) && current.members.length === 5 && Array.isArray(current.songs) && Number.isInteger(current.week)) return current;
+      if (current && current.version === 4 && Array.isArray(current.members) && current.members.length === 5 && Array.isArray(current.songs) && Number.isInteger(current.week)) {
+        if (normalizeRosterNames(current.members)) {
+          try { localStorage.setItem(SAVE_KEY, JSON.stringify(current)); } catch (_) { /* 저장 공간이 부족해도 이어하기 유지 */ }
+        }
+        return current;
+      }
       const oldKey = [PREVIOUS_SAVE_KEY, OLDER_SAVE_KEY, OLD_SAVE_KEY].find(key => localStorage.getItem(key));
       if (!oldKey) return null;
       const previous = JSON.parse(localStorage.getItem(oldKey));
@@ -241,6 +272,7 @@
         member.maxEnergy = clamp(member.maxEnergy + traitEffectSum(added, 'maxEnergy'), 60, 130);
         member.energy = clamp(member.energy + traitEffectSum(added, 'maxEnergy'), 0, member.maxEnergy);
       });
+      normalizeRosterNames(previous.members);
       previous.relationships ||= createRelationships();
       previous.strainWeeks ||= 0;
       if (previous.lastEvent && !Array.isArray(previous.lastEvent.participants)) previous.lastEvent = null;
@@ -284,6 +316,10 @@
   function operatingCostFor(week, fame, fans, gear) {
     return 55 + Math.floor((week - 1) / 4) * 14 + Math.floor(fame / 20) * 12 +
       Math.floor(Math.sqrt(Math.max(0, fans))) * 3 + gear * 12;
+  }
+
+  function maxSetlistSize(offer) {
+    return clamp(3 + Math.floor(Math.max(0, offer.audience - 100) / 150), 3, 8);
   }
 
   function startGame() {
@@ -471,9 +507,10 @@
     if (!state || state.phase !== 'prep') return;
     const chosen = state.setlist.map(id => state.songs.find(song => song.id === id)).filter(song => song && state.fame >= song.unlock);
     if (!chosen.length) return notify('공연할 곡을 1곡 이상 골라 주세요.');
+    if (chosen.length > maxSetlistSize(state.offer)) return notify(`이번 무대에는 최대 ${maxSetlistSize(state.offer)}곡까지 공연할 수 있습니다.`);
     const average = key => state.members.reduce((sum, member) => sum + member[key], 0) / 5;
     const energyRatio = state.members.reduce((sum, member) => sum + member.energy / member.maxEnergy * 100, 0) / 5;
-    const songBonus = chosen.reduce((sum, song) => sum + song.boost, 0) / chosen.length;
+    const songBonus = chosen.reduce((sum, song) => sum + song.boost, 0) / chosen.length + Math.max(0, chosen.length - 3);
     const special = bandEffect('showScore') + bandEffect('songScore') +
       (state.gear > 0 ? bandEffect('gearScore') : 0) +
       (state.offer.difficulty >= 55 ? bandEffect('hardShowScore') : 0) +
@@ -680,7 +717,9 @@
     applyEvent();
     addUnlockedSongs();
     state.offer = offerFor(state.week, state.fame);
-    state.setlist = state.setlist.filter(id => state.songs.some(song => song.id === id && song.unlock <= state.fame));
+    const previousSongCount = state.setlist.length;
+    state.setlist = state.setlist.filter(id => state.songs.some(song => song.id === id && song.unlock <= state.fame)).slice(0, maxSetlistSize(state.offer));
+    if (state.setlist.length < previousSongCount) log(`이번 무대 규모에 맞춰 세트리스트를 ${state.setlist.length}곡으로 조정했습니다.`);
     checkGameOver();
     save(); render(); window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -763,7 +802,7 @@
         <section class="panel section-panel"><div class="panel-head"><h2>밴드 기록</h2><span>RECENT NOTES</span></div><ul class="log-list">${state.log.slice(0, 7).map(item => `<li><time>WEEK ${String(item.week).padStart(2, '0')}</time>${escapeHtml(item.text)}</li>`).join('')}</ul></section>
       </div><div>
         <section class="panel section-panel"><div class="panel-head"><h2>이번 주 공연</h2><span>LIVE OFFER</span></div><div class="venue"><span class="venue-kicker">WEEK ${String(state.week).padStart(2, '0')} · SHOW</span><h3>${escapeHtml(state.offer.name)}</h3><div class="venue-stats"><span>예상 관객 <strong>${format(state.offer.audience)}명</strong></span><span>기본 출연료 <strong>${format(state.offer.pay)}원</strong></span><span>난이도 <strong>${state.offer.difficulty}</strong></span><span>공연장 수수료 <strong>정산액의 18%</strong></span><span>다음 주 예상 운영비 <strong>${format(nextOperatingCost)}원</strong></span></div></div>
-        ${preparing ? `<div class="panel-head"><h2>세트리스트</h2><span>${availableSongs.length}곡 보유 · 최대 3곡 선택</span></div><div class="setlist">${availableSongs.map(song => `<label class="song-option"><div><div class="song-name">${escapeHtml(song.name)}</div><div class="song-sub">${song.type}</div></div><div class="song-badge">점수 +${song.boost}</div><input type="checkbox" data-song="${song.id}" aria-label="${escapeHtml(song.name)} 선택" ${state.setlist.includes(song.id) ? 'checked' : ''}></label>`).join('')}</div><p class="muted">${nextSong ? `다음 곡: 명성 ${nextSong.unlock} 달성 시 「${escapeHtml(nextSong.name)}」 해금 · ` : ''}${songProgress} · 팬과 명성이 쌓이면 계속 추가됩니다.</p><div class="performance-buttons"><button class="button button-primary" data-action="perform">공연 시작 →</button><button class="button" data-action="skip">이번 주 쉬기</button></div><p class="warning">공연은 주차당 한 번 진행하며, 시작하면 남은 행동 포인트를 사용할 수 없습니다.</p>` : `<div class="result">${result.skipped ? `<div class="result-grade">—</div><h3>이번 주는 쉬어갑니다</h3><p>다음 주에 더 좋은 공연을 준비하세요.</p>` : `<div class="result-grade">${result.grade}</div><h3>${result.success ? '무대를 빛냈어요!' : '다음 무대를 준비해요'}</h3><p>공연 점수 ${result.score}점 · ${result.songs.map(escapeHtml).join(' / ')}</p><div class="result-data"><span>정산 수입 +${format(result.earned)}원</span>${result.venueFee ? `<span>공연장 수수료 -${format(result.venueFee)}원</span>` : ''}<span>팬 +${format(result.newFans)}명</span><span>명성 +${result.fame}</span></div>${result.newSongs?.length ? `<p class="new-song-note">새 노래 완성: ${result.newSongs.map(escapeHtml).join(' · ')}</p>` : ''}`}</div><button class="button button-primary" data-action="next">다음 주로 →</button>`}</section>
+        ${preparing ? `<div class="panel-head"><h2>세트리스트</h2><span>${availableSongs.length}곡 보유 · 최대 ${maxSetlistSize(state.offer)}곡 선택</span></div><div class="setlist">${availableSongs.map(song => `<label class="song-option"><div><div class="song-name">${escapeHtml(song.name)}</div><div class="song-sub">${song.type}</div></div><div class="song-badge">점수 +${song.boost}</div><input type="checkbox" data-song="${song.id}" aria-label="${escapeHtml(song.name)} 선택" ${state.setlist.includes(song.id) ? 'checked' : ''}></label>`).join('')}</div><p class="muted">관객 규모에 따라 최대 3~8곡까지 선택할 수 있습니다. 4곡째부터는 곡마다 공연 점수 +1. ${nextSong ? `다음 곡: 명성 ${nextSong.unlock} 달성 시 「${escapeHtml(nextSong.name)}」 해금 · ` : ''}${songProgress} · 팬과 명성이 쌓이면 계속 추가됩니다.</p><div class="performance-buttons"><button class="button button-primary" data-action="perform">공연 시작 →</button><button class="button" data-action="skip">이번 주 쉬기</button></div><p class="warning">공연은 주차당 한 번 진행하며, 시작하면 남은 행동 포인트를 사용할 수 없습니다.</p>` : `<div class="result">${result.skipped ? `<div class="result-grade">—</div><h3>이번 주는 쉬어갑니다</h3><p>다음 주에 더 좋은 공연을 준비하세요.</p>` : `<div class="result-grade">${result.grade}</div><h3>${result.success ? '무대를 빛냈어요!' : '다음 무대를 준비해요'}</h3><p>공연 점수 ${result.score}점 · ${result.songs.map(escapeHtml).join(' / ')}</p><div class="result-data"><span>정산 수입 +${format(result.earned)}원</span>${result.venueFee ? `<span>공연장 수수료 -${format(result.venueFee)}원</span>` : ''}<span>팬 +${format(result.newFans)}명</span><span>명성 +${result.fame}</span></div>${result.newSongs?.length ? `<p class="new-song-note">새 노래 완성: ${result.newSongs.map(escapeHtml).join(' · ')}</p>` : ''}`}</div><button class="button button-primary" data-action="next">다음 주로 →</button>`}</section>
         <div class="help"><strong>공연 팁</strong> · 연주력, 무대 매력, 체력, 팀 호흡, 관계 평균, 홍보 기대감과 장비가 점수에 반영됩니다. 공연을 쉬어도 다음 주로 진행할 수 있어요.</div>
         <div style="margin-top:18px"><button class="button button-danger button-small" data-action="reset">새 밴드 만들기</button></div>
       </div></div>`;
@@ -786,7 +825,8 @@
     const id = event.target.dataset.song;
     if (!id || !state || state.phase !== 'prep') return;
     if (event.target.checked) {
-      if (state.setlist.length >= 3) { event.target.checked = false; notify('세트리스트에는 최대 3곡을 넣을 수 있습니다.'); return; }
+      const limit = maxSetlistSize(state.offer);
+      if (state.setlist.length >= limit) { event.target.checked = false; notify(`이번 무대의 세트리스트에는 최대 ${limit}곡을 넣을 수 있습니다.`); return; }
       state.setlist.push(id);
     } else state.setlist = state.setlist.filter(song => song !== id);
     save();
